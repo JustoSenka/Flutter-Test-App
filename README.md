@@ -1,6 +1,6 @@
-# aibstract_app
+# Test Flutter App
 
-First Aibstract Application
+Test Flutter App
 
 ## Getting Started
 
