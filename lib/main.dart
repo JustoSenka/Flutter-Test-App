@@ -1,22 +1,58 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:english_words/english_words.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'home.dart';
+import 'login.dart';
+import 'strings.dart';
 
 void main() => runApp(MyApp());
 
-// #docregion MyApp
 class MyApp extends StatelessWidget {
-  // #docregion build
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Startup Name Generator',
-      home: RandomWords(),
+      title: Strings.materialAppTitle,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: HomePage(),
+      initialRoute: '/StartupPage',
+      routes: {'/StartupPage': (ctx) => StartupPage()},
     );
   }
-// #enddocregion build
 }
-// #enddocregion MyApp
 
+class StartupPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    SharedPreferences.getInstance().then((prefs) {
+
+      final isLoggedIn = prefs.containsKey(Keys.loggedIn)
+          ? prefs.getBool(Keys.loggedIn)
+      : false;
+
+      if (isLoggedIn) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(builder: (ctx) => HomePage()));
+      } else {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(builder: (ctx) => LoginPage()));
+      }
+    });
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(Strings.homePageTitle),
+      ),
+      body: Center(
+        child: Text(Strings.startupLoadingText),
+      ),
+    );
+  }
+}
 
 class RandomWords extends StatefulWidget {
   @override
@@ -27,6 +63,7 @@ class RandomWordsState extends State<RandomWords> {
   final _suggestions = <WordPair>[];
   final _saved = List<WordPair>();
   final _biggerFont = const TextStyle(fontSize: 18.0);
+
   // #enddocregion RWS-var
 
   // #docregion _buildSuggestions
@@ -34,7 +71,8 @@ class RandomWordsState extends State<RandomWords> {
     return ListView.builder(
         padding: const EdgeInsets.all(16.0),
         itemBuilder: /*1*/ (context, i) {
-          if (i.isOdd) return Divider(); /*2*/
+          if (i.isOdd) return Divider();
+          /*2*/
 
           final index = i ~/ 2; /*3*/
           if (index >= _suggestions.length) {
@@ -43,6 +81,7 @@ class RandomWordsState extends State<RandomWords> {
           return _buildRow(_suggestions[index]);
         });
   }
+
   // #enddocregion _buildSuggestions
 
   // #docregion _buildRow
@@ -56,7 +95,7 @@ class RandomWordsState extends State<RandomWords> {
       ),
       trailing: Icon(
         isSaved ? Icons.favorite : Icons.favorite_border,
-        color:  isSaved ? Colors.red : Colors.grey,
+        color: isSaved ? Colors.red : Colors.grey,
       ),
       onTap: () {
         setState(() {
@@ -68,6 +107,7 @@ class RandomWordsState extends State<RandomWords> {
       },
     );
   }
+
   // #enddocregion _buildRow
 
   // #docregion RWS-build
@@ -83,12 +123,40 @@ class RandomWordsState extends State<RandomWords> {
       body: _buildSuggestions(),
     );
   }
+
 // #enddocregion RWS-build
 // #docregion RWS-var
 
   void _pushSaved() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        // NEW lines from here...
+        builder: (BuildContext context) {
+          final tiles = _saved.map(
+            (WordPair pair) {
+              return ListTile(
+                title: Text(
+                  pair.asPascalCase,
+                  style: _biggerFont,
+                ),
+              );
+            },
+          );
+          final divided = ListTile.divideTiles(
+            context: context,
+            tiles: tiles,
+          ).toList();
 
+          return Scaffold(
+            appBar: AppBar(
+              title: Text('Saved Suggestions'),
+            ),
+            body: ListView(children: divided),
+          );
+        }, // ...to here.
+      ),
+    );
   }
 }
-// #enddocregion RWS-var
 
+// #enddocregion RWS-var
