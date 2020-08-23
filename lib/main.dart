@@ -1,16 +1,37 @@
 import 'dart:io';
 
+import 'package:aibstract_app/services/analytics.dart';
+import 'package:aibstract_app/services/authentication.dart';
+import 'package:aibstract_app/utils/common_widgets.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:english_words/english_words.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'home.dart';
-import 'login.dart';
-import 'strings.dart';
+import 'pages/home.dart';
+import 'pages/login.dart';
+import 'utils/strings.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final analytics = new Analytics(FirebaseAnalytics());
+  final auth = new Auth();
+
+  analytics.logAppOpen();
+
+  Crashlytics.instance.enableInDevMode = true;
+  FlutterError.onError = Crashlytics.instance.recordFlutterError;
+
+  runApp(MyApp(analytics: analytics, auth: auth));
+}
 
 class MyApp extends StatelessWidget {
+  MyApp({this.analytics, this.auth}) {}
+  final BaseAnalytics analytics;
+  final BaseAuth auth;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -18,28 +39,31 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomePage(),
+      home: HomePage(auth, analytics),
       initialRoute: '/StartupPage',
-      routes: {'/StartupPage': (ctx) => StartupPage()},
+      routes: {'/StartupPage': (ctx) => StartupPage(auth, analytics)},
     );
   }
 }
 
 class StartupPage extends StatelessWidget {
+  StartupPage(this.auth, this.analytics) {}
+  final BaseAuth auth;
+  final BaseAnalytics analytics;
+
   @override
   Widget build(BuildContext context) {
-    SharedPreferences.getInstance().then((prefs) {
-
-      final isLoggedIn = prefs.containsKey(Keys.loggedIn)
-          ? prefs.getBool(Keys.loggedIn)
-      : false;
+    print('Startup page');
+    auth.getCurrentUser().then((user) {
+      final isLoggedIn = user != null;
+      print('User logged in: $isLoggedIn');
 
       if (isLoggedIn) {
-        Navigator.of(context).pushReplacement(
-            MaterialPageRoute<void>(builder: (ctx) => HomePage()));
+        Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+            builder: (ctx) => HomePage(auth, analytics, user: user)));
       } else {
-        Navigator.of(context).pushReplacement(
-            MaterialPageRoute<void>(builder: (ctx) => LoginPage()));
+        Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+            builder: (ctx) => LoginPage(auth, analytics)));
       }
     });
 
@@ -47,9 +71,7 @@ class StartupPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(Strings.homePageTitle),
       ),
-      body: Center(
-        child: Text(Strings.startupLoadingText),
-      ),
+      body: CommonWidgets.circularLoadingProgress(true),
     );
   }
 }
